@@ -15,7 +15,7 @@ public class Tests {
     public void Test1() {
         var configBuilder = new ConfigurationBuilder();
         configBuilder.AddJsonFile("appsettings.json");
-        var config = EnvConfigHelper.ReadAll<Config>(configBuilder.Build());
+        var config = new Config(configBuilder.Build()); // EnvConfigHelper.ReadAll<Config>(configBuilder.Build());
         Assert.IsTrue(config.TestString == "1234");
         Assert.IsTrue(config.TestInteger == 1234);
         Assert.IsTrue(config.TestEnum == EnumTest.Dua);

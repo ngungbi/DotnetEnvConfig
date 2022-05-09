@@ -5,15 +5,16 @@ using Microsoft.Extensions.Configuration;
 namespace EnvConfig;
 
 public class EnvConfigHelper {
-    // public static TConfig ReadAll<TConfig>(IConfiguration configuration) where TConfig : class {
-    //     configuration.
-    // }
-    public static TConfig ReadAll<TConfig>(IConfiguration? configuration = null) where TConfig : class {
-        var config = Activator.CreateInstance<TConfig>();
+    public static TConfig ReadAll<TConfig>(IConfiguration configuration) where TConfig : class {
+        var target = Activator.CreateInstance<TConfig>();
+        return ReadAll(target, configuration);
+    }
+
+    public static TConfig ReadAll<TConfig>(TConfig target, IConfiguration? configuration = null) where TConfig : class {
         var props = typeof(TConfig).GetProperties();
         var hasConfig = configuration is not null;
         foreach (var propInfo in props) {
-            if (propInfo.GetCustomAttribute(typeof(FromEnvAttribute)) is not FromEnvAttribute attr || attr.VariableName is null) continue;
+            if (propInfo.GetCustomAttribute(typeof(FromEnvAttribute)) is not FromEnvAttribute attr) continue;
             string? rawValue = null;
 
             // cek dulu dari environment
@@ -26,43 +27,48 @@ public class EnvConfigHelper {
                 rawValue = GetValue(configuration!, propInfo.Name, attr.Section);
             }
 
-            // propInfo.PropertyType;
-            var propType = propInfo.PropertyType;
+            // jika masih tidak ada, abaikan
+            if (rawValue is null) continue;
+
+            // cari tipe aslinya jika nullable
+            var propType = GetBaseType(propInfo.PropertyType);
+
+            // untuk tipe string, langsung saja
             if (propType == typeof(string)) {
-                propInfo.SetValue(config, rawValue);
+                propInfo.SetValue(target, rawValue);
                 continue;
             }
 
-            var isNullable = propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(Nullable<>);
-            if (isNullable) {
-                propType = new NullableConverter(propType).UnderlyingType;
-            }
-
-            object? value;
-
-            if (propType.IsEnum) {
-                value = ParseAsEnum(propType, rawValue);
-            } else {
-                var paramTypes = new[] {typeof(string), propType.MakeByRefType()};
-                var parser = propType.GetMethod("TryParse", paramTypes);
-
-                if (parser is null) continue;
-
-                var args = new object?[] {rawValue, null};
-                var result = parser.Invoke(null, args);
-                if (result is null || !(bool) result) continue;
-                value = args[1];
-            }
+            var value = propType.IsEnum ? ParseAsEnum(propType, rawValue) : Parse(propType, rawValue);
 
             if (value is not null) {
-                propInfo.SetValue(config, value);
+                propInfo.SetValue(target, value);
                 // continue;
             }
         }
 
-        return config;
+        return target;
     }
 
+    private static Type GetBaseType(Type type) {
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) {
+            type = new NullableConverter(type).UnderlyingType;
+        }
+
+        return type;
+    }
+
+    private static object? Parse(Type type, string? rawValue) {
+        var paramTypes = new[] {typeof(string), type.MakeByRefType()};
+        var parser = type.GetMethod("TryParse", paramTypes);
+
+        if (parser is null) return null;
+
+        var args = new object?[] {rawValue, null};
+        var result = parser.Invoke(null, args);
+        if (result is null || !(bool) result) return null;
+        return args[1];
+    }
 
     private static string? GetValue(IConfiguration configuration, string name, string? section) {
         // if (configuration is null) return null;

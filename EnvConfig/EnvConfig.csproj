@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <PackageId>Ngb.EnvConfig</PackageId>
         <Authors>Harish Mahatma Putra</Authors>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     </PropertyGroup>
 
     <ItemGroup>
