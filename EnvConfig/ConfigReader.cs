@@ -2,19 +2,32 @@
 using System.Reflection;
 using Microsoft.Extensions.Configuration;
 
-namespace EnvConfig;
+namespace Ngb.Configuration;
 
-public class EnvConfigHelper {
+public class ConfigReader {
+    /// <summary>
+    /// Create a new instance of TConfig and load all configurations.
+    /// </summary>
+    /// <param name="configuration">Reference to existing IConfiguration object</param>
+    /// <typeparam name="TConfig">Class of configuration object</typeparam>
+    /// <returns></returns>
     public static TConfig ReadAll<TConfig>(IConfiguration configuration) where TConfig : class {
         var target = Activator.CreateInstance<TConfig>();
         return ReadAll(target, configuration);
     }
 
+    /// <summary>
+    /// Load all configurations to an existing TConfig target.
+    /// </summary>
+    /// <param name="target">Target object</param>
+    /// <param name="configuration">Reference to existing IConfiguration object</param>
+    /// <typeparam name="TConfig">Class of configuration object</typeparam>
+    /// <returns></returns>
     public static TConfig ReadAll<TConfig>(TConfig target, IConfiguration? configuration = null) where TConfig : class {
         var props = typeof(TConfig).GetProperties();
         var hasConfig = configuration is not null;
         foreach (var propInfo in props) {
-            if (propInfo.GetCustomAttribute(typeof(FromEnvAttribute)) is not FromEnvAttribute attr) continue;
+            if (propInfo.GetCustomAttribute(typeof(FromConfigAttribute)) is not FromConfigAttribute attr) continue;
             string? rawValue = null;
 
             // cek dulu dari environment
@@ -24,7 +37,7 @@ public class EnvConfigHelper {
 
             // jika tidak ada coba cek di json file
             if (rawValue is null && hasConfig) {
-                rawValue = GetValue(configuration!, propInfo.Name, attr.Section);
+                rawValue = GetValue(configuration!, attr.Key ?? propInfo.Name, attr.Section);
             }
 
             // jika masih tidak ada, abaikan

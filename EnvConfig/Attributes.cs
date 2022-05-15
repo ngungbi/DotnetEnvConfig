@@ -1,13 +1,14 @@
-namespace EnvConfig;
+namespace Ngb.Configuration;
 
 [AttributeUsage(AttributeTargets.Property)]
-public class FromEnvAttribute : Attribute {
+public class FromConfigAttribute : Attribute {
     internal string? VariableName { get; }
     public string? Section { get; init; }
+    public string? Key { get; init; }
 
-    public FromEnvAttribute() { }
+    public FromConfigAttribute() { }
 
-    public FromEnvAttribute(string variable) {
+    public FromConfigAttribute(string variable) {
         VariableName = variable;
     }
 }
